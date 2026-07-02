@@ -29,11 +29,19 @@ FORMAT:
 {
   "headline": "",
   "category": "politics | crime | law_justice | world | india | tamil_nadu | business | economy | education | health | technology | sports | entertainment | weather | general",
-  "priority": "breaking | top_story | latest",
+  "news_type": "breaking | developing | regular",
   "location": "",
   "published_date": "",
   "highlights": ["", "", "", ""]
 }
+
+NEWS TYPE RULES:
+- Use "breaking" only for urgent, major events that have just happened.
+- Use "developing" for important ongoing stories where more updates are expected.
+- Use "regular" for normal day-to-day news.
+- If unsure, use "regular".
+- Do NOT use exclusive.
+- Do NOT use live.
 
 LANGUAGE QUALITY RULES:
 - If the article is Tamil, the output must be 100% natural Tamil.
@@ -64,7 +72,7 @@ SUMMARY RULES:
 - Return only JSON.
 - No explanation outside JSON.
 - category must be only one allowed value.
-- priority must be only one of: breaking, top_story, latest.
+- news_type must be only one of: breaking, developing, regular.
 - Provide exactly 4 concise factual highlights.
 - Each highlight must be short and reader-friendly.
 - Do not add opinion.
@@ -133,6 +141,25 @@ def clean_tamil_quality(value):
     return value
 
 
+def normalize_news_type(data: dict) -> dict:
+    old_priority = data.get("priority")
+    news_type = data.get("news_type") or old_priority or "regular"
+
+    mapping = {
+        "breaking": "breaking",
+        "developing": "developing",
+        "top_story": "developing",
+        "latest": "regular",
+        "regular": "regular",
+        "news_update": "regular",
+    }
+
+    data["news_type"] = mapping.get(str(news_type).lower(), "regular")
+    data.pop("priority", None)
+
+    return data
+
+
 def analyze_article(
     article_title: str,
     article_text: str,
@@ -165,6 +192,7 @@ ARTICLE:
             raise OpenAIError("Empty response from OpenAI")
 
         parsed = parse_json_safe(response.output_text)
+        parsed = normalize_news_type(parsed)
         return clean_tamil_quality(parsed)
 
     except Exception as error:

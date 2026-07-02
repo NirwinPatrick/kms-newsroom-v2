@@ -25,13 +25,13 @@ def get_category_label(category: str) -> str:
     return mapping.get(str(category).lower(), "General 🧭")
 
 
-def get_priority_label(priority: str) -> str:
+def get_news_type_label(news_type: str) -> str:
     mapping = {
-        "breaking": "BREAKING 🚨",
-        "top_story": "TOP STORY 🔴",
-        "latest": "LATEST 🟢",
+        "breaking": "Breaking 🚨",
+        "developing": "Developing Story 🔥",
+        "regular": "Regular 🟢",
     }
-    return mapping.get(str(priority).lower(), "LATEST 🟢")
+    return mapping.get(str(news_type).lower(), "Regular 🟢")
 
 
 def clean_value(value):
@@ -47,7 +47,43 @@ def clean_value(value):
 
 
 def clean_headline(headline):
-    return clean_value(headline)
+    headline = clean_value(headline)
+
+    source_suffixes = [
+        "BBC News தமிழ்",
+        "BBC Tamil",
+        "BBC News",
+        "News7 Tamil",
+        "News18 Tamil",
+        "News18 தமிழ்",
+        "Hindu Tamil Thisai",
+        "The Hindu",
+        "Dinamalar",
+        "Daily Thanthi",
+        "தினத்தந்தி",
+        "தினமலர்",
+        "Vikatan",
+        "Times of India",
+        "Indian Express",
+        "Latest News",
+        "Breaking News",
+        "Live Updates",
+    ]
+
+    for source in source_suffixes:
+        suffixes = [
+            f" - {source}",
+            f" | {source}",
+            f" — {source}",
+            f" – {source}",
+            f": {source}",
+        ]
+
+        for suffix in suffixes:
+            if headline.lower().endswith(suffix.lower()):
+                headline = headline[: -len(suffix)].strip()
+
+    return headline
 
 
 def should_show(value):
@@ -58,7 +94,7 @@ def format_news(article_data: dict, source: str = "") -> str:
     headline = clean_headline(article_data.get("headline"))
 
     category = article_data.get("category", "general")
-    priority = article_data.get("priority", "latest")
+    news_type = article_data.get("news_type") or article_data.get("priority") or "regular"
     location = clean_value(article_data.get("location"))
     published = clean_value(article_data.get("published_date"))
 
@@ -77,7 +113,7 @@ def format_news(article_data: dict, source: str = "") -> str:
 
     footer_lines = [
         f"🏷️ <b>Category</b>: {get_category_label(category)}",
-        f"⭐ <b>Priority</b>: {get_priority_label(priority)}",
+        f"📢 <b>News Type</b>: {get_news_type_label(news_type)}",
     ]
 
     if should_show(location):
