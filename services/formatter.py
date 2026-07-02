@@ -3,6 +3,11 @@ KMS Newsroom v2
 News Formatter Service
 """
 
+import re
+
+
+DIVIDER = "━━━━━━━━━━━━━━━"
+
 
 def get_category_label(category: str) -> str:
     mapping = {
@@ -46,6 +51,17 @@ def clean_value(value):
     return value
 
 
+def clean_location(location):
+    location = clean_value(location)
+
+    fixes = {
+        "தமிழக": "தமிழ்நாடு",
+        "தமிழகம்": "தமிழ்நாடு",
+    }
+
+    return fixes.get(location, location)
+
+
 def clean_headline(headline):
     headline = clean_value(headline)
 
@@ -71,17 +87,17 @@ def clean_headline(headline):
     ]
 
     for source in source_suffixes:
-        suffixes = [
-            f" - {source}",
-            f" | {source}",
-            f" — {source}",
-            f" – {source}",
-            f": {source}",
-        ]
+        for sep in [" - ", " | ", " — ", " – ", ": "]:
+            tail = f"{sep}{source}"
+            if headline.lower().endswith(tail.lower()):
+                headline = headline[: -len(tail)].strip()
 
-        for suffix in suffixes:
-            if headline.lower().endswith(suffix.lower()):
-                headline = headline[: -len(suffix)].strip()
+    if re.search(r"[\u0B80-\u0BFF]", headline):
+        headline = re.sub(
+            r"\s+[A-Za-z][A-Za-z0-9\s|:&\-\.]*$",
+            "",
+            headline,
+        ).strip()
 
     return headline
 
@@ -95,9 +111,8 @@ def format_news(article_data: dict, source: str = "") -> str:
 
     category = article_data.get("category", "general")
     news_type = article_data.get("news_type") or article_data.get("priority") or "regular"
-    location = clean_value(article_data.get("location"))
+    location = clean_location(article_data.get("location"))
     published = clean_value(article_data.get("published_date"))
-
     highlights = article_data.get("highlights", [])
 
     bullets = []
@@ -125,17 +140,10 @@ def format_news(article_data: dict, source: str = "") -> str:
     footer = "\n".join(footer_lines)
 
     return f"""
-📰 <b>News Update</b>
-
 {headline}
-
-━━━━━━━━━━━━━━━━━━
-
-📝 <b>Summary</b>
+{DIVIDER}
 
 {summary}
-
-━━━━━━━━━━━━━━━━━━
-
+{DIVIDER}
 {footer}
 """.strip()
