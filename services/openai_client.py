@@ -1,6 +1,6 @@
 """
 KMS Newsroom v2
-OpenAI AI Brain Layer - GPT-5 Mini Optimized
+OpenAI AI Brain Layer - Speed Optimized
 """
 
 import json
@@ -12,7 +12,7 @@ class OpenAIError(Exception):
     pass
 
 
-MAX_ARTICLE_CHARS = 4000
+MAX_ARTICLE_CHARS = 2500
 
 
 SYSTEM_PROMPT = """
@@ -32,7 +32,7 @@ FORMAT:
   "priority": "breaking | top_story | latest",
   "location": "",
   "published_date": "",
-  "highlights": ["", "", ""]
+  "highlights": ["", "", "", ""]
 }
 
 RULES:
@@ -40,10 +40,11 @@ RULES:
 - No explanation outside JSON.
 - category must be only one allowed value.
 - priority must be only one of: breaking, top_story, latest.
-- Provide exactly 3 concise factual highlights.
+- Provide exactly 4 concise factual highlights.
 - Each highlight must be short and reader-friendly.
 - Do not add opinion.
 - Do not exaggerate.
+- Do not mix languages inside a sentence.
 - If location is not mentioned, use "Not Mentioned".
 - If published date is not mentioned, use "Not Mentioned".
 - Keep output in the same language as the article.
@@ -89,7 +90,7 @@ ARTICLE:
 """
 
         response = client.responses.create(
-            model="gpt-5-mini",
+            model="gpt-4o-mini",
             input=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_input},
