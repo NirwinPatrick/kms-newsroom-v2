@@ -1,38 +1,29 @@
 """
 KMS Newsroom v2
-Configuration Loader
+Configuration
 """
 
-from dotenv import load_dotenv
 import os
 import sys
 
-# Load .env file
+from dotenv import load_dotenv
+
 load_dotenv()
 
-# ==========================================================
-# REQUIRED ENVIRONMENT VARIABLES
-# ==========================================================
-
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-# ==========================================================
-# VALIDATION
-# ==========================================================
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 missing = []
 
 if not TELEGRAM_BOT_TOKEN:
     missing.append("TELEGRAM_BOT_TOKEN")
 
-if not GEMINI_API_KEY:
-    missing.append("GEMINI_API_KEY")
+if not OPENAI_API_KEY:
+    missing.append("OPENAI_API_KEY")
 
 if missing:
-    print("\n❌ Missing environment variables:")
+    print("❌ Missing environment variables:\n")
     for item in missing:
         print(f"   - {item}")
-
-    print("\nCreate a .env file in the project root.\n")
+    print("\nConfigure them locally in .env or as Railway Variables.")
     sys.exit(1)
