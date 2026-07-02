@@ -34,35 +34,34 @@ def get_priority_label(priority: str) -> str:
     return mapping.get(priority, "🟢 LATEST")
 
 
-def clean_value(value: str | None) -> str:
-    if not value or str(value).strip().lower() in ["unknown", "none", "null", ""]:
+def clean_value(value):
+    if not value or str(value).strip().lower() in [
+        "unknown",
+        "none",
+        "null",
+        "",
+    ]:
         return "Not Mentioned"
     return str(value).strip()
 
 
-def clean_headline(headline: str, source: str) -> str:
-    """
-    Removes duplicated publisher suffix from headline.
-    Example:
-    'Election announced - News7 Tamil' -> 'Election announced'
-    """
-
+def clean_headline(headline, source):
     headline = clean_value(headline)
     source = clean_value(source)
 
     if source == "Not Mentioned":
         return headline
 
-    possible_suffixes = [
+    suffixes = [
         f" - {source}",
         f" | {source}",
         f" — {source}",
         f" – {source}",
     ]
 
-    for suffix in possible_suffixes:
+    for suffix in suffixes:
         if headline.lower().endswith(suffix.lower()):
-            return headline[: -len(suffix)].strip()
+            return headline[:-len(suffix)].strip()
 
     return headline
 
@@ -77,26 +76,27 @@ def format_news(article_data: dict, source: str) -> str:
     published_date = clean_value(article_data.get("published_date"))
     highlights = article_data.get("highlights", [])
 
-    highlight_lines = []
+    bullets = []
+
     for item in highlights[:3]:
         if item and str(item).strip():
-            highlight_lines.append(f"🔹 {str(item).strip()}")
+            bullets.append(f"🔹 {str(item).strip()}")
 
-    if not highlight_lines:
-        highlight_lines.append("🔹 Not Mentioned")
+    if not bullets:
+        bullets.append("🔹 Not Mentioned")
 
-    highlight_text = "\n\n".join(highlight_lines)
+    highlights_text = "\n\n".join(bullets)
 
     return f"""
-━━━━━━━━━━━━━━━━━━
-
-         🛡️ <b>காவலர் மக்கள் செய்தி</b>
-
-━━━━━━━━━━━━━━━━━━
-
 📰 <b>Headline</b>
 
 <b>{source}</b> — {headline}
+
+━━━━━━━━━━━━━━━━━━
+
+📌 <b>Key Highlights</b>
+
+{highlights_text}
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -104,10 +104,4 @@ def format_news(article_data: dict, source: str) -> str:
 ⭐ <b>Priority</b> : {get_priority_label(priority)}
 📍 <b>Location</b> : {location}
 📅 <b>Published On</b> : {published_date}
-
-━━━━━━━━━━━━━━━━━━
-
-📌 <b>Key Highlights</b>
-
-{highlight_text}
 """.strip()
