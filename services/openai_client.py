@@ -1,6 +1,6 @@
 """
 KMS Newsroom v2
-OpenAI AI Brain Layer - Tamil News Sub-Editor Prompt
+OpenAI AI Brain Layer - Tamil Extractive News Brief
 """
 
 import json
@@ -12,13 +12,12 @@ class OpenAIError(Exception):
     pass
 
 
-MAX_ARTICLE_CHARS = 3500
+MAX_ARTICLE_CHARS = 4500
 
 
 SYSTEM_PROMPT = """
 You are a professional Tamil news sub-editor.
 
-Your job is NOT to create new news.
 Your job is to prepare a clean Tamil newsroom bulletin from the given article.
 
 Return STRICT JSON ONLY.
@@ -33,69 +32,81 @@ FORMAT:
   "highlights": ["", "", "", ""]
 }
 
+CORE RULE:
+- Do not freely invent or rewrite the news.
+- For highlights, use facts and wording from the ARTICLE as much as possible.
+- Compress article sentences instead of creating new sentences.
+
 HEADLINE RULES:
-- Preserve the real editorial headline.
-- Remove SEO keywords, YouTube tags, topic tags, and keyword strings from the headline.
-- Remove parts such as: "Mekadatu Issue", "TN vs Karnataka", "Congress Crisis", "TVK", "Breaking News", "Latest News", "Live Updates".
-- Do not add your own headline unless the original headline is missing or unusable.
-- If the headline is Tamil with English SEO keywords at the end, keep only the Tamil editorial headline.
+- Preserve the real Tamil editorial headline.
+- Remove English SEO/tag text at the end of the headline.
+- Remove text such as: "Mekadatu Issue", "TN vs Karnataka", "Congress Crisis", "TVK", "Breaking News", "Latest News", "Live Updates".
+- If the headline is Tamil followed by English keywords, keep only the Tamil part.
 
-SUMMARY RULES:
-- Prepare exactly 4 summary points.
-- Each point must contain one clear fact from the article.
-- Prefer the article's own Tamil words and sentence structure.
-- Compress and clean the article wording; do not invent new wording unnecessarily.
-- Do not translate Tamil into another style.
-- Do not add opinion, judgement, or vague statements.
-- Avoid generic lines like "இந்த செய்தி முக்கியமானது".
-- Avoid awkward phrases and machine-translation style Tamil.
-- Each point should be short, natural, and suitable for WhatsApp news reading.
+HIGHLIGHT RULES:
+- Give exactly 4 highlights.
+- Each highlight must be one clear factual point from the article.
+- Each highlight must sound like a Tamil news sentence.
+- Prefer words already present in the article.
+- Do not add new claims.
+- Do not add analysis.
+- Do not add opinion.
+- Do not write vague lines like "இந்த செய்தி முக்கியமானது".
+- Do not create awkward machine-translated Tamil.
+- Do not mention facts unless they are clearly present in the article.
+- If the article has fewer than 4 strong facts, split existing factual details cleanly.
 
-LANGUAGE QUALITY RULES:
-- If the article is Tamil, output must be 100% natural Tamil.
-- Never mix English, Korean, Hindi, Malayalam, or any other language inside Tamil summary sentences.
-- Keep proper nouns as they appear in the article.
-- Never use the word "கேசமாகியது".
-- For burned/damaged houses, use natural Tamil such as "தீயில் எரிந்தன", "சாம்பலானது", or "சேதமடைந்தன".
+BAD TAMIL RULES:
+Never use these bad/awkward words or phrases:
+- கேசமாகியது
+- குற malt
+- இணையோ பார்வையில்
+- நினைவில் முக்கியமான ஒன்று
+- சொந்தத்தமிழக
+- கட்டச் சேர்ந்த நிலை
+
+Use natural Tamil wording:
+- தீயில் எரிந்தன
+- சாம்பலானது
+- சேதமடைந்தன
+- கட்ட முயன்றால்
+- எதிர்ப்பு தெரிவிக்கப்படும்
+- போராட்டம் நடத்தப்படும்
+
+LANGUAGE RULES:
+- If article is Tamil, output must be fully Tamil.
+- Do not mix English, Korean, Hindi, Malayalam, or broken foreign words in Tamil summary.
+- Proper nouns can remain as in the article.
 
 NEWS TYPE RULES:
-- Use "breaking" only for urgent major events that have just happened.
-- Use "developing" for important ongoing stories where more updates are expected.
-- Use "regular" for normal day-to-day news.
-- If unsure, use "regular".
-- Do not use "exclusive".
-- Do not use "live".
-
-CATEGORY RULES:
-- Choose only one allowed category.
-- Use "tamil_nadu" for Tamil Nadu state-level news.
-- Use "india" for national Indian news.
-- Use "world" for international news.
-- Use "politics" when the main focus is political parties, leaders, elections, government conflict, or policy dispute.
+- breaking: only urgent major events that just happened.
+- developing: important ongoing issue where more updates are expected.
+- regular: normal news update.
+- If unsure, use regular.
 
 LOCATION RULES:
-- Read ORIGINAL_HEADLINE first, then ARTICLE.
-- Extract the most relevant place mentioned in either the headline or article.
-- Location can be city, district, state, country, or region.
-- If a place is clearly mentioned, do not return "Not Mentioned".
-- For Tamil articles, return the location in Tamil if it appears in Tamil.
-- Use "Not Mentioned" only when no location is present in both headline and article.
+- Extract the clearest place from headline or article.
+- For Tamil Nadu-related state news, return "தமிழ்நாடு".
+- If a district/city is clearly mentioned, return it.
+- If no place is found, use "Not Mentioned".
 
 PUBLISHED DATE RULES:
 - If PUBLISHED_DATE_FROM_METADATA is provided, return that exact value.
-- If no date is provided and no date is clearly mentioned in the article, use "Not Mentioned".
-- Do not guess the date.
-
-Return only valid JSON. No markdown. No explanation.
+- Otherwise use "Not Mentioned".
 """
 
 
-BAD_TAMIL_REPLACEMENTS = {
+BAD_REPLACEMENTS = {
     "கேசமாகியது": "சாம்பலானது",
     "கேசமாகிய": "சாம்பலான",
     "கேசமாகி": "சாம்பலாகி",
+    "குற malt": "குற்றச்சாட்டு",
     "malt": "",
     "있다고": "",
+    "இணையோ பார்வையில்": "",
+    "நினைவில் முக்கியமான ஒன்று": "",
+    "சொந்தத்தமிழக": "தமிழக",
+    "கட்டச் சேர்ந்த நிலை": "கட்ட முயன்றால்",
 }
 
 
@@ -113,36 +124,30 @@ def parse_json_safe(text: str) -> dict:
 
 def trim_article_text(article_text: str) -> str:
     text = article_text.strip()
-
     if len(text) <= MAX_ARTICLE_CHARS:
         return text
 
     trimmed = text[:MAX_ARTICLE_CHARS]
-
-    endings = [".", "!", "?", "।", "。", "\n"]
-
-    for ending in endings:
+    for ending in [".", "!", "?", "\n"]:
         if ending in trimmed:
             return trimmed.rsplit(ending, 1)[0].strip()
 
     return trimmed.strip()
 
 
-def clean_tamil_quality(value):
+def clean_text(value):
     if isinstance(value, str):
-        cleaned = value
-
-        for bad, good in BAD_TAMIL_REPLACEMENTS.items():
-            cleaned = cleaned.replace(bad, good)
-
-        cleaned = re.sub(r"\s+", " ", cleaned).strip()
-        return cleaned
+        text = value
+        for bad, good in BAD_REPLACEMENTS.items():
+            text = text.replace(bad, good)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
 
     if isinstance(value, list):
-        return [clean_tamil_quality(item) for item in value]
+        return [clean_text(item) for item in value]
 
     if isinstance(value, dict):
-        return {key: clean_tamil_quality(item) for key, item in value.items()}
+        return {key: clean_text(item) for key, item in value.items()}
 
     return value
 
@@ -161,7 +166,6 @@ def normalize_news_type(data: dict) -> dict:
 
     data["news_type"] = mapping.get(str(news_type).lower(), "regular")
     data.pop("priority", None)
-
     return data
 
 
@@ -191,6 +195,7 @@ ARTICLE:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_input},
             ],
+            temperature=0,
         )
 
         if not response.output_text:
@@ -198,7 +203,7 @@ ARTICLE:
 
         parsed = parse_json_safe(response.output_text)
         parsed = normalize_news_type(parsed)
-        return clean_tamil_quality(parsed)
+        return clean_text(parsed)
 
     except Exception as error:
         raise OpenAIError(f"OpenAI processing failed: {error}") from error
