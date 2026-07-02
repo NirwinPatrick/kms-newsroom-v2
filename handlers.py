@@ -76,10 +76,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             article_title=article.title,
             article_text=article.text,
             api_key=OPENAI_API_KEY,
+            published_date=article.published_date,
         )
 
         if article.title and article.title.strip():
             article_json["headline"] = article.title.strip()
+
+        if article.published_date:
+            article_json["published_date"] = article.published_date
 
         final_output = format_news(article_json, source)
 

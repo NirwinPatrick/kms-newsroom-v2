@@ -35,7 +35,25 @@ FORMAT:
   "highlights": ["", "", "", ""]
 }
 
-RULES:
+LANGUAGE QUALITY RULES:
+- If the article is Tamil, output must be 100% natural Tamil.
+- Never mix English, Korean, Hindi, Malayalam, or any other language inside Tamil sentences.
+- Do not output broken foreign words.
+- If a Tamil sentence becomes awkward, rewrite it naturally in Tamil.
+- Keep proper nouns as they appear in the article.
+
+LOCATION RULES:
+- Extract the most relevant place mentioned in the article.
+- Location can be city, district, state, country, or region.
+- If the article clearly mentions a state/place such as Manipur, Tamil Nadu, Chennai, Delhi, Brazil, etc., do not return "Not Mentioned".
+- Use "Not Mentioned" only when no location is present anywhere in the article.
+
+PUBLISHED DATE RULES:
+- If PUBLISHED_DATE_FROM_METADATA is provided, return that exact value.
+- If no date is provided and no date is clearly mentioned in the article, use "Not Mentioned".
+- Do not guess the date.
+
+SUMMARY RULES:
 - Return only JSON.
 - No explanation outside JSON.
 - category must be only one allowed value.
@@ -44,9 +62,6 @@ RULES:
 - Each highlight must be short and reader-friendly.
 - Do not add opinion.
 - Do not exaggerate.
-- Do not mix languages inside a sentence.
-- If location is not mentioned, use "Not Mentioned".
-- If published date is not mentioned, use "Not Mentioned".
 - Keep output in the same language as the article.
 """
 
@@ -77,13 +92,21 @@ def trim_article_text(article_text: str) -> str:
     return trimmed
 
 
-def analyze_article(article_title: str, article_text: str, api_key: str) -> dict:
+def analyze_article(
+    article_title: str,
+    article_text: str,
+    api_key: str,
+    published_date: str | None = None,
+) -> dict:
     try:
         client = OpenAI(api_key=api_key)
 
         user_input = f"""
 ORIGINAL_HEADLINE:
 {article_title}
+
+PUBLISHED_DATE_FROM_METADATA:
+{published_date or "Not Mentioned"}
 
 ARTICLE:
 {trim_article_text(article_text)}
