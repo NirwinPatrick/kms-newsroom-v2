@@ -1,6 +1,6 @@
 """
 KMS Newsroom v2
-OpenAI AI Brain Layer - Speed Optimized
+OpenAI AI Brain Layer - Speed Optimized + Tamil Quality Guard
 """
 
 import json
@@ -12,11 +12,11 @@ class OpenAIError(Exception):
     pass
 
 
-MAX_ARTICLE_CHARS = 2500
+MAX_ARTICLE_CHARS = 3000
 
 
 SYSTEM_PROMPT = """
-You are a professional newsroom editor.
+You are a professional Tamil newsroom editor.
 
 Convert the given news article into STRICT JSON ONLY.
 
@@ -36,17 +36,24 @@ FORMAT:
 }
 
 LANGUAGE QUALITY RULES:
-- If the article is Tamil, output must be 100% natural Tamil.
+- If the article is Tamil, the output must be 100% natural Tamil.
 - Never mix English, Korean, Hindi, Malayalam, or any other language inside Tamil sentences.
 - Do not output broken foreign words.
-- If a Tamil sentence becomes awkward, rewrite it naturally in Tamil.
+- Do not produce unnatural Tamil words.
+- Avoid awkward direct translations.
+- Use simple, commonly used Tamil news language.
 - Keep proper nouns as they appear in the article.
+- Never use the word "கேசமாகியது".
+- For burned/damaged houses, use natural Tamil such as "தீயில் எரிந்தன", "சாம்பலானது", or "சேதமடைந்தன".
 
 LOCATION RULES:
-- Extract the most relevant place mentioned in the article.
+- Read ORIGINAL_HEADLINE first, then ARTICLE.
+- Extract the most relevant place mentioned in either the headline or article.
 - Location can be city, district, state, country, or region.
-- If the article clearly mentions a state/place such as Manipur, Tamil Nadu, Chennai, Delhi, Brazil, etc., do not return "Not Mentioned".
-- Use "Not Mentioned" only when no location is present anywhere in the article.
+- If the headline or article clearly mentions a place such as மணிப்பூர், தமிழ்நாடு, சென்னை, டெல்லி, பிரேசில், ரியோ டி ஜெனிரோ, பவானி, ஈரோடு, கன்னியாகுமரி, etc., return that location.
+- For Tamil articles, return the location in Tamil if the place appears in Tamil.
+- Do NOT return "Not Mentioned" when a place is clearly present in the headline.
+- Use "Not Mentioned" only when no location is present in both the headline and article.
 
 PUBLISHED DATE RULES:
 - If PUBLISHED_DATE_FROM_METADATA is provided, return that exact value.
@@ -64,6 +71,15 @@ SUMMARY RULES:
 - Do not exaggerate.
 - Keep output in the same language as the article.
 """
+
+
+BAD_TAMIL_REPLACEMENTS = {
+    "கேசமாகியது": "சாம்பலானது",
+    "கேசமாகிய": "சாம்பலான",
+    "கேசமாகி": "சாம்பலாகி",
+    "malt": "",
+    "있다고": "",
+}
 
 
 def clean_json(text: str) -> str:
@@ -86,10 +102,35 @@ def trim_article_text(article_text: str) -> str:
 
     trimmed = text[:MAX_ARTICLE_CHARS]
 
-    if "." in trimmed:
-        return trimmed.rsplit(".", 1)[0]
+    endings = [".", "!", "?", "।", "。", "\n"]
 
-    return trimmed
+    for ending in endings:
+        if ending in trimmed:
+            return trimmed.rsplit(ending, 1)[0].strip()
+
+    return trimmed.strip()
+
+
+def clean_tamil_quality(value):
+    if isinstance(value, str):
+        cleaned = value
+
+        for bad, good in BAD_TAMIL_REPLACEMENTS.items():
+            cleaned = cleaned.replace(bad, good)
+
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        return cleaned
+
+    if isinstance(value, list):
+        return [clean_tamil_quality(item) for item in value]
+
+    if isinstance(value, dict):
+        return {
+            key: clean_tamil_quality(item)
+            for key, item in value.items()
+        }
+
+    return value
 
 
 def analyze_article(
@@ -123,7 +164,8 @@ ARTICLE:
         if not response.output_text:
             raise OpenAIError("Empty response from OpenAI")
 
-        return parse_json_safe(response.output_text)
+        parsed = parse_json_safe(response.output_text)
+        return clean_tamil_quality(parsed)
 
     except Exception as error:
         raise OpenAIError(f"OpenAI processing failed: {error}") from error
