@@ -22,7 +22,7 @@ def get_category_label(category: str) -> str:
         "weather": "Weather 🌦️",
         "general": "General 🧭",
     }
-    return mapping.get(category.lower(), "General 🧭")
+    return mapping.get(str(category).lower(), "General 🧭")
 
 
 def get_priority_label(priority: str) -> str:
@@ -31,7 +31,7 @@ def get_priority_label(priority: str) -> str:
         "top_story": "TOP STORY 🔴",
         "latest": "LATEST 🟢",
     }
-    return mapping.get(priority.lower(), "LATEST 🟢")
+    return mapping.get(str(priority).lower(), "LATEST 🟢")
 
 
 def clean_value(value):
@@ -40,37 +40,22 @@ def clean_value(value):
 
     value = str(value).strip()
 
-    if value.lower() in ["unknown", "none", "null", ""]:
+    if value.lower() in ["unknown", "none", "null", "", "not mentioned"]:
         return "Not Mentioned"
 
     return value
 
 
-def clean_headline(headline, source):
-    headline = clean_value(headline)
-    source = clean_value(source)
-
-    if source == "Not Mentioned":
-        return headline
-
-    suffixes = [
-        f" - {source}",
-        f" | {source}",
-        f" — {source}",
-        f" – {source}",
-    ]
-
-    for suffix in suffixes:
-        if headline.lower().endswith(suffix.lower()):
-            headline = headline[:-len(suffix)].strip()
-
-    return headline
+def clean_headline(headline):
+    return clean_value(headline)
 
 
-def format_news(article_data: dict, source: str):
+def should_show(value):
+    return clean_value(value) != "Not Mentioned"
 
-    source = clean_value(source)
-    headline = clean_headline(article_data.get("headline"), source)
+
+def format_news(article_data: dict, source: str = "") -> str:
+    headline = clean_headline(article_data.get("headline"))
 
     category = article_data.get("category", "general")
     priority = article_data.get("priority", "latest")
@@ -83,15 +68,28 @@ def format_news(article_data: dict, source: str):
 
     for item in highlights[:4]:
         if item and str(item).strip():
-            bullets.append(f"➜ {item.strip()}")
+            bullets.append(f"➜ {str(item).strip()}")
 
     if not bullets:
         bullets.append("➜ Not Mentioned")
 
     summary = "\n\n".join(bullets)
 
+    footer_lines = [
+        f"🏷️ <b>Category</b>: {get_category_label(category)}",
+        f"⭐ <b>Priority</b>: {get_priority_label(priority)}",
+    ]
+
+    if should_show(location):
+        footer_lines.append(f"📍 <b>Location</b>: {location}")
+
+    if should_show(published):
+        footer_lines.append(f"📅 <b>Published On</b>: {published}")
+
+    footer = "\n".join(footer_lines)
+
     return f"""
-🗞️ <b>News Brief</b>
+📰 <b>News Update</b>
 
 {headline}
 
@@ -103,9 +101,5 @@ def format_news(article_data: dict, source: str):
 
 ━━━━━━━━━━━━━━━━━━
 
-🏷️ <b>Category</b>: {get_category_label(category)}
-⭐ <b>Priority</b>: {get_priority_label(priority)}
-📍 <b>Location</b>: {location}
-📅 <b>Published</b>: {published}
-📰 <b>Source</b>: {source}
+{footer}
 """.strip()
