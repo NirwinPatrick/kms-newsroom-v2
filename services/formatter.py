@@ -139,11 +139,8 @@ def format_news(article_data: dict, source: str = "") -> str:
 
     footer = "\n".join(footer_lines)
 
-    return f"""
-{headline}
+    return f"""{headline}
 {DIVIDER}
-
 {summary}
 {DIVIDER}
-{footer}
-""".strip()
+{footer}""".strip()

@@ -84,9 +84,22 @@ NEWS TYPE RULES:
 - regular: normal news update.
 - If unsure, use regular.
 
+CATEGORY RULES:
+- Choose only one allowed category.
+- Use "tamil_nadu" only when the story is primarily about Tamil Nadu state, Tamil Nadu government, Tamil Nadu districts, Tamil Nadu politics, Tamil Nadu weather, or Tamil Nadu public issues.
+- Do NOT use "tamil_nadu" merely because the article is written in Tamil.
+- Use "india" for national Indian stories, Ayodhya, Ram Mandir, RSS, VHP, BJP national leadership, Union Government, Supreme Court, Parliament, national agencies, and all-India issues.
+- Use "world" for international news.
+- Use "politics" when the main focus is political parties, leaders, elections, government conflict, or policy dispute and it is not specifically Tamil Nadu-only.
+- Use "crime" for theft, murder, robbery, assault, fraud, police cases, arrests, or criminal investigations.
+- Use "law_justice" for court orders, legal disputes, judgments, or justice system stories.
+
 LOCATION RULES:
 - Extract the clearest place from headline or article.
-- For Tamil Nadu-related state news, return "தமிழ்நாடு".
+- Prefer specific location in this order: city/town/village, district, state, country.
+- For Ayodhya/Ram temple stories, use "அயோத்தி, உத்தரப் பிரதேசம்" if no more specific place is available.
+- For Manipur stories, use "மணிப்பூர்".
+- For Tamil Nadu state-level stories, use "தமிழ்நாடு".
 - If a district/city is clearly mentioned, return it.
 - If no place is found, use "Not Mentioned".
 
